@@ -15,6 +15,8 @@
             --dark-red: #c0392b;
             --gray-light: #e0e0e0;
             --blue: #3498db;
+            --active-tab: #2c3e50;
+            --inactive-tab: #ecf0f1;
         }
 
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg-color); color: var(--text-color); display: flex; justify-content: center; padding: 20px; }
@@ -27,16 +29,69 @@
         input, select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 1rem; background: #fff; transition: border 0.2s; }
         input:focus, select:focus { border-color: var(--text-color); outline: none; }
 
-        /* GAUGE CONTAINER */
-        .gauge-wrapper {
-            position: relative;
-            width: 200px;
-            height: 100px; 
-            margin: 10px auto 10px auto;
-            overflow: hidden;
+        /* --- NEW: TABS STYLING --- */
+        .tabs-wrapper {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding-bottom: 5px;
+            margin-bottom: 15px;
+            /* Hide scrollbar but allow scroll */
+            scrollbar-width: none; 
+            -ms-overflow-style: none;
         }
-        
-        /* SVG STYLES */
+        .tabs-wrapper::-webkit-scrollbar { display: none; }
+
+        .tab-btn {
+            white-space: nowrap;
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: none;
+            background: var(--inactive-tab);
+            color: #7f8c8d;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+        }
+        .tab-btn.active {
+            background: var(--active-tab);
+            color: #fff;
+            box-shadow: 0 4px 6px rgba(44, 62, 80, 0.2);
+        }
+        .tab-add-btn {
+            background: none;
+            border: 2px dashed #bdc3c7;
+            color: #bdc3c7;
+            width: 35px; /* Square-ish */
+            padding: 0;
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+        .tab-add-btn:hover { border-color: var(--green); color: var(--green); }
+
+        /* --- NEW: TRIP HEADER CONTROLS --- */
+        .trip-controls-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .trip-title-group { display: flex; align-items: center; gap: 8px; }
+        .current-trip-name { font-size: 1.2rem; font-weight: 700; color: #333; }
+        .icon-btn { background: none; border: none; cursor: pointer; font-size: 1rem; color: #95a5a6; padding: 4px; transition: color 0.2s; }
+        .icon-btn:hover { color: var(--blue); }
+        .icon-btn.delete:hover { color: var(--red); }
+
+        /* DAILY BURN STATS */
+        .trip-stats { display: flex; justify-content: space-between; align-items: center; background: #f8f9fa; border: 1px solid #eee; padding: 10px 15px; border-radius: 12px; cursor: pointer; margin-bottom: 20px; }
+        .stat-item { font-size: 0.9rem; font-weight: 600; color: #555; }
+        .stat-highlight { color: var(--blue); }
+
+        /* GAUGE CONTAINER */
+        .gauge-wrapper { position: relative; width: 200px; height: 100px; margin: 10px auto 10px auto; overflow: hidden; }
         .gauge-container-svg { width: 100%; height: auto; display: block; margin: 0 auto; }
         .gauge-bg { fill: none; stroke: var(--gray-light); stroke-width: 10; stroke-linecap: round; }
         .gauge-fill { fill: none; stroke: var(--green); stroke-width: 10; stroke-linecap: round; transition: stroke-dasharray 0.4s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.3s; }
@@ -45,18 +100,6 @@
         .gauge-text-overlay { position: absolute; bottom: 0; left: 0; width: 100%; text-align: center; }
         .gauge-percent { font-size: 2rem; font-weight: 800; color: #333; line-height: 1; }
         .gauge-subtext { font-size: 0.8rem; color: #777; margin-top: 5px; font-weight: 500;}
-
-        /* TRIP SELECTOR */
-        .trip-section { background: #f8f9fa; padding: 15px; border-radius: 12px; margin-bottom: 20px; }
-        .trip-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-        .trip-select { border: none; background: transparent; font-weight: bold; font-size: 1.1rem; cursor: pointer; color: #333; flex-grow: 1; padding: 0; }
-        .add-trip-btn { background: #fff; border: 1px solid #ddd; border-radius: 50%; width: 30px; height: 30px; font-size: 1.2rem; cursor: pointer; color: var(--green); display: flex; align-items: center; justify-content: center; }
-        
-        /* DAILY BURN STATS */
-        .trip-stats { display: flex; justify-content: space-between; align-items: center; background: #fff; border: 1px solid #eee; padding: 8px 12px; border-radius: 8px; cursor: pointer; }
-        .stat-item { font-size: 0.85rem; font-weight: 600; color: #555; }
-        .stat-highlight { color: var(--blue); }
-        .stat-edit-icon { font-size: 0.8rem; color: #999; }
 
         /* EXPENSE LIST */
         .expense-list { list-style: none; padding: 0; margin-top: 20px; border-top: 1px solid #eee; }
@@ -100,18 +143,21 @@
 
     <div id="dashboard-section">
         
-        <div class="trip-section">
-            <div class="trip-header">
-                <select id="tripSelector" class="trip-select" onchange="switchTrip()">
-                    </select>
-                <button class="add-trip-btn" onclick="addNewTrip()" title="Add new trip">+</button>
+        <div class="tabs-wrapper" id="tabsContainer">
             </div>
-            
-            <div class="trip-stats" onclick="editTripSettings()" title="Click to edit duration">
-                <span class="stat-item">📅 <span id="statDays">0</span> Days</span>
-                <span class="stat-item">🔥 <span id="statBurn" class="stat-highlight">$0</span> / day</span>
-                <span class="stat-edit-icon">✎</span>
+
+        <div class="trip-controls-header">
+            <div class="trip-title-group">
+                <span class="current-trip-name" id="displayTripName">Summer Trip</span>
+                <button class="icon-btn" onclick="editTripName()" title="Rename Trip">✎</button>
             </div>
+            <button class="icon-btn delete" onclick="deleteCurrentTrip()" title="Delete Trip">🗑️</button>
+        </div>
+
+        <div class="trip-stats" onclick="editTripDuration()" title="Click to edit duration">
+            <span class="stat-item">📅 <span id="statDays">0</span> Days</span>
+            <span class="stat-item">🔥 <span id="statBurn" class="stat-highlight">$0</span> / day</span>
+            <span class="icon-btn" style="font-size: 0.8rem;">✎</span>
         </div>
 
         <div class="gauge-wrapper">
@@ -168,18 +214,16 @@
     };
     
     const WORK_DAYS = 260; 
-    const ARC_LENGTH = 126; // Approx circumference of semi-circle radius 40
+    const ARC_LENGTH = 126;
 
     // --- INIT ---
     window.onload = function() {
-        const saved = localStorage.getItem('vacationBudget_v3');
+        const saved = localStorage.getItem('vacationBudget_v4');
         if (saved) {
             try {
                 const parsed = JSON.parse(saved);
                 if (parsed.trips) {
                     data = parsed;
-                    // Migration for older versions without 'days'
-                    data.trips.forEach(t => { if(!t.days) t.days = 1; });
                     if(data.salary > 0) showDashboard();
                 }
             } catch (e) { console.error("Save corrupted"); }
@@ -202,12 +246,10 @@
     function showDashboard() {
         document.getElementById('setup-section').style.display = 'none';
         document.getElementById('dashboard-section').style.display = 'block';
-        renderTripSelector();
         updateUI();
     }
 
     // --- CORE LOGIC ---
-    
     function getAllExpensesTotal() {
         let total = 0;
         data.trips.forEach(trip => {
@@ -217,20 +259,25 @@
     }
 
     function getCurrentTrip() {
-        return data.trips.find(t => t.id == data.currentTripId) || data.trips[0];
+        // Find current trip, fallback to first if deleted
+        let trip = data.trips.find(t => t.id == data.currentTripId);
+        if (!trip && data.trips.length > 0) {
+            trip = data.trips[0];
+            data.currentTripId = trip.id;
+        }
+        return trip;
     }
 
     function getTripTotal(trip) {
         return trip.expenses.reduce((sum, item) => sum + item.amount, 0);
     }
 
-    // --- GHOST / PREVIEW ---
+    // --- VISUALS ---
     function updateGhost() {
         const inputVal = parseFloat(document.getElementById('newExpenseAmount').value) || 0;
         const currentTotal = getAllExpensesTotal();
         const projectedTotal = currentTotal + inputVal;
         
-        // Calculate Time Cost
         const dailyRate = data.salary / WORK_DAYS;
         const daysCost = (inputVal / dailyRate).toFixed(1);
         const timeDisplay = document.getElementById('timeCostDisplay');
@@ -241,49 +288,25 @@
             timeDisplay.innerHTML = '';
         }
 
-        // Update Ghost Arc
         const ghostPath = document.getElementById('ghostPath');
         const projectedPct = Math.min((projectedTotal / data.totalBudget), 1);
         const dashVal = projectedPct * ARC_LENGTH;
-        
         ghostPath.style.strokeDasharray = `${dashVal}, 126`;
 
-        // Color Logic
         const pct = (projectedTotal / data.totalBudget) * 100;
         let color = 'var(--green)';
         if (pct >= 50) color = 'var(--orange)';
         if (pct >= 80) color = 'var(--red)';
         if (pct > 100) color = 'var(--dark-red)';
-        
         ghostPath.style.stroke = color;
     }
 
-    // --- ACTIONS ---
-    function addExpense() {
-        const amount = parseFloat(document.getElementById('newExpenseAmount').value);
-        const category = document.getElementById('newExpenseCategory').value;
-        if (!amount) return;
-
-        const trip = getCurrentTrip();
-        trip.expenses.push({
-            id: Date.now(),
-            name: category,
-            amount: amount
-        });
-
-        document.getElementById('newExpenseAmount').value = '';
-        document.getElementById('timeCostDisplay').innerHTML = '';
-
-        saveLocal();
-        updateUI();
-        document.getElementById('ghostPath').style.strokeDasharray = `0, 126`; 
-    }
-
     function updateUI() {
+        renderTabs(); // Draw tabs
+        
         const totalSpent = getAllExpensesTotal();
         const pct = (totalSpent / data.totalBudget) * 100;
         
-        // Update SVG Arcs
         const mainPath = document.getElementById('mainPath');
         const ghostPath = document.getElementById('ghostPath');
         const mainDash = Math.min((pct / 100), 1) * ARC_LENGTH;
@@ -291,7 +314,6 @@
         mainPath.style.strokeDasharray = `${mainDash}, 126`;
         ghostPath.style.strokeDasharray = `${mainDash}, 126`;
 
-        // Colors & Text
         const bigPct = document.getElementById('bigPercent');
         const statusMsg = document.getElementById('statusMsg');
         const moneyText = document.getElementById('moneyText');
@@ -299,7 +321,6 @@
         bigPct.innerText = Math.round(pct) + "%";
         moneyText.innerText = `${formatMoney(totalSpent)} / ${formatMoney(data.totalBudget)}`;
 
-        // Traffic Light
         let color = 'var(--green)';
         let status = "Safe Zone";
         if (pct >= 50) { color = 'var(--orange)'; status = "Spending Accumulating"; }
@@ -314,8 +335,28 @@
         renderList();
     }
 
+    // --- NEW: TAB LOGIC ---
+    function renderTabs() {
+        const container = document.getElementById('tabsContainer');
+        
+        // Map trips to buttons
+        const html = data.trips.map(t => {
+            const isActive = t.id == data.currentTripId;
+            return `<button class="tab-btn ${isActive ? 'active' : ''}" onclick="switchTrip(${t.id})">${t.name}</button>`;
+        }).join('');
+
+        // Add the "+" button at the end
+        const addBtn = `<button class="tab-btn tab-add-btn" onclick="addNewTrip()">+</button>`;
+        
+        container.innerHTML = html + addBtn;
+    }
+
     function renderTripStats() {
         const trip = getCurrentTrip();
+        if(!trip) return;
+
+        document.getElementById('displayTripName').innerText = trip.name;
+        
         const spent = getTripTotal(trip);
         const days = trip.days || 1; 
         const dailyBurn = spent / days;
@@ -324,43 +365,19 @@
         document.getElementById('statBurn').innerText = formatMoney(dailyBurn);
     }
 
-    function renderList() {
-        const list = document.getElementById('expenseList');
-        const trip = getCurrentTrip();
-
-        list.innerHTML = trip.expenses.map(e => `
-            <li class="expense-item" onclick="editExpense(${e.id})">
-                <div class="expense-left">
-                    <span class="expense-name">${e.name}</span>
-                </div>
-                <div class="expense-actions">
-                    <span style="font-weight:bold;">${formatMoney(e.amount)}</span>
-                    <button class="delete-btn" onclick="event.stopPropagation(); deleteExpense(${e.id})">&times;</button>
-                </div>
-            </li>
-        `).join('');
-    }
-
-    // --- TRIP MANAGEMENT ---
-    function renderTripSelector() {
-        const selector = document.getElementById('tripSelector');
-        selector.innerHTML = data.trips.map(t => 
-            `<option value="${t.id}" ${t.id == data.currentTripId ? 'selected' : ''}>${t.name}</option>`
-        ).join('');
-    }
-
-    function switchTrip() {
-        const selector = document.getElementById('tripSelector');
-        data.currentTripId = parseInt(selector.value);
+    function switchTrip(id) {
+        data.currentTripId = id;
         saveLocal();
         updateUI();
     }
 
+    // --- NEW: TRIP MANAGEMENT ---
+    
     function addNewTrip() {
-        const name = prompt("Name of new trip (e.g. 'Winter Holiday'):");
+        const name = prompt("Name of new trip:");
         if (!name) return;
         
-        const days = prompt("How many days is this trip?", "7");
+        const days = prompt("How many days?", "7");
         if (!days) return;
 
         const newId = Date.now();
@@ -373,11 +390,35 @@
         
         data.currentTripId = newId;
         saveLocal();
-        renderTripSelector();
         updateUI();
     }
 
-    function editTripSettings() {
+    function editTripName() {
+        const trip = getCurrentTrip();
+        const newName = prompt("Rename trip:", trip.name);
+        if(newName) {
+            trip.name = newName;
+            saveLocal();
+            updateUI();
+        }
+    }
+
+    function deleteCurrentTrip() {
+        if(data.trips.length <= 1) {
+            return alert("You need at least one trip bucket!");
+        }
+        
+        const trip = getCurrentTrip();
+        if(confirm(`Are you sure you want to delete "${trip.name}" and all its expenses?`)) {
+            data.trips = data.trips.filter(t => t.id !== trip.id);
+            // Switch to first available
+            data.currentTripId = data.trips[0].id;
+            saveLocal();
+            updateUI();
+        }
+    }
+    
+    function editTripDuration() {
         const trip = getCurrentTrip();
         const newDays = prompt(`Edit days for "${trip.name}":`, trip.days);
         
@@ -393,7 +434,40 @@
         }
     }
 
-    // --- UTILS ---
+    // --- LIST & EXPENSES ---
+    function renderList() {
+        const list = document.getElementById('expenseList');
+        const trip = getCurrentTrip();
+        if(!trip) return;
+
+        list.innerHTML = trip.expenses.map(e => `
+            <li class="expense-item" onclick="editExpense(${e.id})">
+                <div class="expense-left">
+                    <span class="expense-name">${e.name}</span>
+                </div>
+                <div class="expense-actions">
+                    <span style="font-weight:bold;">${formatMoney(e.amount)}</span>
+                    <button class="delete-btn" onclick="event.stopPropagation(); deleteExpense(${e.id})">&times;</button>
+                </div>
+            </li>
+        `).join('');
+    }
+
+    function addExpense() {
+        const amount = parseFloat(document.getElementById('newExpenseAmount').value);
+        const category = document.getElementById('newExpenseCategory').value;
+        if (!amount) return;
+
+        const trip = getCurrentTrip();
+        trip.expenses.push({ id: Date.now(), name: category, amount: amount });
+
+        document.getElementById('newExpenseAmount').value = '';
+        document.getElementById('timeCostDisplay').innerHTML = '';
+        saveLocal();
+        updateUI();
+        document.getElementById('ghostPath').style.strokeDasharray = `0, 126`; 
+    }
+
     function deleteExpense(id) {
         if(confirm("Delete item?")) {
             const trip = getCurrentTrip();
@@ -407,7 +481,6 @@
         const trip = getCurrentTrip();
         const item = trip.expenses.find(e => e.id === id);
         if(!item) return;
-        
         const newAmt = prompt("New Amount:", item.amount);
         if(newAmt) {
             item.amount = parseFloat(newAmt);
@@ -416,17 +489,16 @@
         }
     }
 
+    // --- SYSTEM ---
     function saveLocal() {
-        localStorage.setItem('vacationBudget_v3', JSON.stringify(data));
+        localStorage.setItem('vacationBudget_v4', JSON.stringify(data));
     }
-
     function resetData() {
-        if(confirm("Wipe all data and start over?")) {
-            localStorage.removeItem('vacationBudget_v3');
+        if(confirm("Wipe all data?")) {
+            localStorage.removeItem('vacationBudget_v4');
             location.reload();
         }
     }
-
     function exportData() {
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data));
         const a = document.createElement('a');
@@ -434,7 +506,6 @@
         a.download = "budget_backup.json";
         a.click();
     }
-
     function importData(input) {
         const file = input.files[0];
         if (!file) return;
@@ -445,7 +516,6 @@
         };
         reader.readAsText(file);
     }
-
     function formatMoney(num) {
         return '$' + Math.round(num).toLocaleString();
     }
