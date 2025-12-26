@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vacation Budgeter MVP</title>
+    <style>
+        :root {
+            --bg-color: #f4f4f9;
+            --card-bg: #ffffff;
+            --text-color: #333;
+            --green: #2ecc71;
+            --orange: #f39c12;
+            --red: #e74c3c;
+            --dark-red: #c0392b;
+        }
+
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg-color); color: var(--text-color); display: flex; justify-content: center; padding: 20px; }
+        .container { background: var(--card-bg); width: 100%; max-width: 500px; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        
+        h1, h2 { text-align: center; margin-bottom: 1rem; }
+        .input-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 0.9rem; }
+        input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 1rem; }
+        
+        /* The Bar Container */
+        .bar-container { position: relative; height: 30px; background: #e0e0e0; border-radius: 15px; margin: 30px 0 10px 0; overflow: hidden; }
+        
+        /* The Actual Progress Bar */
+        .bar-fill { height: 100%; width: 0%; transition: width 0.3s ease, background-color 0.3s ease; position: absolute; left: 0; top: 0; z-index: 2; }
+        
+        /* The Ghost Bar (Preview) */
+        .bar-ghost { height: 100%; width: 0%; position: absolute; left: 0; top: 0; z-index: 1; opacity: 0.5; transition: width 0.3s ease, background-color 0.3s ease; }
+
+        /* Status Text */
+        .status-text { text-align: center; font-weight: bold; margin-bottom: 20px; min-height: 1.2em; }
+        
+        /* Expense List */
+        .expense-list { list-style: none; padding: 0; margin-top: 20px; border-top: 1px solid #eee; }
+        .expense-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
+        
+        button { width: 100%; padding: 12px; background: #333; color: #fff; border: none; border-radius: 6px; font-size: 1rem; cursor: pointer; }
+        button:hover { background: #555; }
+
+        /* Setup Section */
+        #setup-section { display: block; }
+        #dashboard-section { display: none; }
+        
+        /* Overbudget Stripe Animation */
+        .striped {
+            background-image: linear-gradient(45deg,rgba(255,255,255,.15) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.15) 50%,rgba(255,255,255,.15) 75%,transparent 75%,transparent);
+            background-size: 1rem 1rem;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="setup-section">
+        <h2>Vacation Setup</h2>
+        <div class="input-group">
+            <label>Annual Salary ($)</label>
+            <input type="number" id="salaryInput" placeholder="e.g. 60000">
+        </div>
+        <div class="input-group">
+            <label>Percentage for Vacation (%)</label>
+            <input type="number" id="percentInput" placeholder="e.g. 5">
+        </div>
+        <button onclick="initializeBudget()">Start Planning</button>
+    </div>
+
+    <div id="dashboard-section">
+        <h2>Budget Overview</h2>
+        <div style="text-align: center; font-size: 0.9rem; color: #666;">
+            Total Budget: <span id="displayTotalBudget">$0</span>
+        </div>
+
+        <div class="bar-container">
+            <div class="bar-fill" id="mainBar"></div>
+            <div class="bar-ghost" id="ghostBar"></div>
+        </div>
+        <div class="status-text" id="statusText">Safe Zone</div>
+
+        <div class="input-group">
+            <label>New Expense Amount ($)</label>
+            <input type="number" id="newExpenseAmount" placeholder="Cost of item..." oninput="updateGhost()">
+            <div id="timeCostDisplay" style="font-size: 0.85rem; color: #666; margin-top: 5px; height: 1em;"></div>
+        </div>
+        <div class="input-group">
+            <input type="text" id="newExpenseName" placeholder="Description (e.g. Hotel)">
+        </div>
+        <button onclick="addExpense()">Add Expense</button>
+
+        <ul class="expense-list" id="expenseList"></ul>
+    </div>
+</div>
+
+<script>
+    let annualSalary = 0;
+    let totalBudget = 0;
+    let currentSpent = 0;
+    let expenses = [];
+    const WORK_DAYS = 260; // Standard 5-day work week year
+
+    // Initialize
+    function initializeBudget() {
+        const salary = parseFloat(document.getElementById('salaryInput').value);
+        const percent = parseFloat(document.getElementById('percentInput').value);
+
+        if (!salary || !percent) return alert("Please fill in both fields");
+
+        annualSalary = salary;
+        totalBudget = salary * (percent / 100);
+        
+        document.getElementById('displayTotalBudget').textContent = formatMoney(totalBudget);
+        document.getElementById('setup-section').style.display = 'none';
+        document.getElementById('dashboard-section').style.display = 'block';
+        updateUI();
+    }
+
+    // The Ghost Bar Logic (Context Aware)
+    function updateGhost() {
+        const inputVal = parseFloat(document.getElementById('newExpenseAmount').value) || 0;
+        const projectedTotal = currentSpent + inputVal;
+        const projectedPct = (projectedTotal / totalBudget) * 100;
+
+        const ghostBar = document.getElementById('ghostBar');
+        const mainBar = document.getElementById('mainBar');
+        
+        // Calculate daily earnings
+        const dailyRate = annualSalary / WORK_DAYS;
+        const daysCost = (inputVal / dailyRate).toFixed(1);
+        
+        // Update Time Cost Text
+        const timeDisplay = document.getElementById('timeCostDisplay');
+        if (inputVal > 0) {
+            timeDisplay.innerHTML = `⏳ This costs you <strong>${daysCost} days</strong> of work.`;
+        } else {
+            timeDisplay.innerHTML = '';
+        }
+
+        // Set Ghost Bar Width (starts where main bar ends)
+        // Note: CSS width is relative to parent, so we simulate the "add on"
+        ghostBar.style.width = Math.min(projectedPct, 100) + "%";
+
+        // Determine Color based on PROJECTED zone
+        let color = 'var(--green)'; // Default < 50%
+        if (projectedPct >= 50 && projectedPct < 80) color = 'var(--orange)';
+        if (projectedPct >= 80) color = 'var(--red)';
+        if (projectedPct > 100) color = 'var(--dark-red)';
+
+        ghostBar.style.backgroundColor = color;
+    }
+
+    // Add Expense
+    function addExpense() {
+        const amount = parseFloat(document.getElementById('newExpenseAmount').value);
+        const name = document.getElementById('newExpenseName').value || 'Expense';
+
+        if (!amount) return;
+
+        expenses.push({ name, amount });
+        currentSpent += amount;
+
+        // Reset Inputs
+        document.getElementById('newExpenseAmount').value = '';
+        document.getElementById('newExpenseName').value = '';
+        document.getElementById('timeCostDisplay').innerHTML = '';
+
+        updateUI();
+        updateGhost(); // Reset ghost
+    }
+
+    // Core UI Update
+    function updateUI() {
+        const pct = (currentSpent / totalBudget) * 100;
+        const mainBar = document.getElementById('mainBar');
+        const statusText = document.getElementById('statusText');
+
+        mainBar.style.width = Math.min(pct, 100) + "%";
+
+        // Traffic Light Logic
+        mainBar.classList.remove('striped');
+        if (pct < 50) {
+            mainBar.style.backgroundColor = 'var(--green)';
+            statusText.innerText = `All Good (${Math.round(pct)}%)`;
+            statusText.style.color = 'var(--green)';
+        } else if (pct < 80) {
+            mainBar.style.backgroundColor = 'var(--orange)';
+            statusText.innerText = `Careful (${Math.round(pct)}%)`;
+            statusText.style.color = 'var(--orange)';
+        } else if (pct <= 100) {
+            mainBar.style.backgroundColor = 'var(--red)';
+            statusText.innerText = `Warning! (${Math.round(pct)}%)`;
+            statusText.style.color = 'var(--red)';
+        } else {
+            mainBar.style.backgroundColor = 'var(--dark-red)';
+            mainBar.classList.add('striped');
+            statusText.innerText = `OVERBUDGET (${Math.round(pct)}%)`;
+            statusText.style.color = 'var(--dark-red)';
+        }
+
+        renderList();
+    }
+
+    function renderList() {
+        const list = document.getElementById('expenseList');
+        list.innerHTML = expenses.map(e => `
+            <li class="expense-item">
+                <span>${e.name}</span>
+                <span>${formatMoney(e.amount)}</span>
+            </li>
+        `).join('');
+    }
+
+    function formatMoney(num) {
+        return '$' + num.toLocaleString();
+    }
+</script>
+
+</body>
+</html>
