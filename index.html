@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vacation Budgeter MVP</title>
+    <title>Vacation Budgeter Pro</title>
     <style>
         :root {
             --bg-color: #f4f4f9;
@@ -13,44 +13,49 @@
             --orange: #f39c12;
             --red: #e74c3c;
             --dark-red: #c0392b;
+            --blue: #3498db;
         }
 
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg-color); color: var(--text-color); display: flex; justify-content: center; padding: 20px; }
         .container { background: var(--card-bg); width: 100%; max-width: 500px; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         
-        h1, h2 { text-align: center; margin-bottom: 1rem; }
+        h1, h2 { text-align: center; margin-bottom: 1rem; margin-top: 0; }
         .input-group { margin-bottom: 15px; }
         label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 0.9rem; }
-        input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 1rem; }
+        
+        /* Inputs & Selects */
+        input, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 1rem; background: #fff; }
         
         /* The Bar Container */
         .bar-container { position: relative; height: 30px; background: #e0e0e0; border-radius: 15px; margin: 30px 0 10px 0; overflow: hidden; }
-        
-        /* The Actual Progress Bar */
         .bar-fill { height: 100%; width: 0%; transition: width 0.3s ease, background-color 0.3s ease; position: absolute; left: 0; top: 0; z-index: 2; }
-        
-        /* The Ghost Bar (Preview) */
         .bar-ghost { height: 100%; width: 0%; position: absolute; left: 0; top: 0; z-index: 1; opacity: 0.5; transition: width 0.3s ease, background-color 0.3s ease; }
 
-        /* Status Text */
         .status-text { text-align: center; font-weight: bold; margin-bottom: 20px; min-height: 1.2em; }
         
         /* Expense List */
         .expense-list { list-style: none; padding: 0; margin-top: 20px; border-top: 1px solid #eee; }
-        .expense-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
-        
-        button { width: 100%; padding: 12px; background: #333; color: #fff; border: none; border-radius: 6px; font-size: 1rem; cursor: pointer; }
-        button:hover { background: #555; }
+        .expense-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 10px; border-bottom: 1px solid #eee; cursor: pointer; transition: background 0.2s; }
+        .expense-item:hover { background-color: #f9f9f9; }
+        .expense-details { flex-grow: 1; }
+        .expense-actions { display: flex; gap: 10px; }
+        .delete-btn { color: var(--red); background: none; border: none; font-size: 1.2rem; cursor: pointer; padding: 0 5px; }
+        .delete-btn:hover { color: var(--dark-red); transform: scale(1.1); }
 
-        /* Setup Section */
+        /* Buttons */
+        .btn-primary { width: 100%; padding: 12px; background: #333; color: #fff; border: none; border-radius: 6px; font-size: 1rem; cursor: pointer; }
+        .btn-primary:hover { background: #555; }
+        
+        .btn-group { display: flex; gap: 10px; margin-top: 20px; }
+        .btn-secondary { flex: 1; padding: 10px; background: #f0f0f0; color: #333; border: 1px solid #ddd; border-radius: 6px; cursor: pointer; font-size: 0.9rem; text-align: center;}
+        .btn-secondary:hover { background: #e0e0e0; }
+
         #setup-section { display: block; }
         #dashboard-section { display: none; }
         
-        /* Overbudget Stripe Animation */
-        .striped {
-            background-image: linear-gradient(45deg,rgba(255,255,255,.15) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.15) 50%,rgba(255,255,255,.15) 75%,transparent 75%,transparent);
-            background-size: 1rem 1rem;
-        }
+        .striped { background-image: linear-gradient(45deg,rgba(255,255,255,.15) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.15) 50%,rgba(255,255,255,.15) 75%,transparent 75%,transparent); background-size: 1rem 1rem; }
+        
+        .edit-hint { font-size: 0.75rem; color: #888; text-align: right; margin-top: -10px; margin-bottom: 10px; font-style: italic; }
     </style>
 </head>
 <body>
@@ -66,13 +71,22 @@
             <label>Percentage for Vacation (%)</label>
             <input type="number" id="percentInput" placeholder="e.g. 5">
         </div>
-        <button onclick="initializeBudget()">Start Planning</button>
+        <button class="btn-primary" onclick="startPlanning()">Start Planning</button>
+        
+        <div style="margin-top: 20px; text-align: center; border-top: 1px solid #eee; padding-top: 20px;">
+            <p style="font-size: 0.9rem; color: #666; margin-bottom: 10px;">Already have a file?</p>
+            <button class="btn-secondary" onclick="document.getElementById('fileInput').click()">📂 Upload Save File</button>
+        </div>
     </div>
 
     <div id="dashboard-section">
-        <h2>Budget Overview</h2>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h2>Budget Overview</h2>
+            <button onclick="resetData()" style="background:none; border:none; color:#888; cursor:pointer; font-size:0.8rem; text-decoration:underline;">Reset</button>
+        </div>
+        
         <div style="text-align: center; font-size: 0.9rem; color: #666;">
-            Total Budget: <span id="displayTotalBudget">$0</span>
+            Total Budget: <span id="displayTotalBudget" style="font-weight:bold; color:#333;">$0</span>
         </div>
 
         <div class="bar-container">
@@ -82,104 +96,179 @@
         <div class="status-text" id="statusText">Safe Zone</div>
 
         <div class="input-group">
-            <label>New Expense Amount ($)</label>
-            <input type="number" id="newExpenseAmount" placeholder="Cost of item..." oninput="updateGhost()">
+            <label>Add New Expense</label>
+            <div style="display: flex; gap: 10px;">
+                <select id="newExpenseCategory" style="flex: 2;">
+                    <option value="✈️ Flight">✈️ Flight</option>
+                    <option value="🏨 Hotel">🏨 Hotel</option>
+                    <option value="🍽️ Food">🍽️ Food</option>
+                    <option value="🚕 Transport">🚕 Transport</option>
+                    <option value="🛍️ Shopping">🛍️ Shopping</option>
+                    <option value="🎟️ Activity">🎟️ Activity</option>
+                    <option value="📦 Other">📦 Other</option>
+                </select>
+                
+                <input type="number" id="newExpenseAmount" placeholder="$ Cost" style="flex: 1;" oninput="updateGhost()">
+            </div>
             <div id="timeCostDisplay" style="font-size: 0.85rem; color: #666; margin-top: 5px; height: 1em;"></div>
         </div>
-        <div class="input-group">
-            <input type="text" id="newExpenseName" placeholder="Description (e.g. Hotel)">
-        </div>
-        <button onclick="addExpense()">Add Expense</button>
+        <button class="btn-primary" onclick="addExpense()">Add Expense</button>
 
+        <div class="edit-hint" id="listHint" style="display:none; margin-top:20px;">Click an item to edit</div>
         <ul class="expense-list" id="expenseList"></ul>
+
+        <div class="btn-group">
+            <button class="btn-secondary" onclick="exportData()">💾 Save to File</button>
+            <button class="btn-secondary" onclick="document.getElementById('fileInput').click()">📂 Load from File</button>
+        </div>
     </div>
+    
+    <input type="file" id="fileInput" accept=".json" style="display: none;" onchange="importData(this)">
 </div>
 
 <script>
-    let annualSalary = 0;
-    let totalBudget = 0;
-    let currentSpent = 0;
-    let expenses = [];
-    const WORK_DAYS = 260; // Standard 5-day work week year
+    // State Variables
+    let data = {
+        salary: 0,
+        percent: 0,
+        totalBudget: 0,
+        expenses: [] // { id, name, amount }
+    };
+    
+    const WORK_DAYS = 260; 
 
-    // Initialize
-    function initializeBudget() {
+    // Auto-load
+    window.onload = function() {
+        const saved = localStorage.getItem('vacationBudget_v1');
+        if (saved) {
+            try {
+                data = JSON.parse(saved);
+                if (data.salary > 0) {
+                    showDashboard();
+                }
+            } catch (e) { console.error("Save file corrupted"); }
+        }
+    };
+
+    function startPlanning() {
         const salary = parseFloat(document.getElementById('salaryInput').value);
         const percent = parseFloat(document.getElementById('percentInput').value);
 
         if (!salary || !percent) return alert("Please fill in both fields");
 
-        annualSalary = salary;
-        totalBudget = salary * (percent / 100);
+        data.salary = salary;
+        data.percent = percent;
+        data.totalBudget = salary * (percent / 100);
+        data.expenses = [];
         
-        document.getElementById('displayTotalBudget').textContent = formatMoney(totalBudget);
+        saveLocal();
+        showDashboard();
+    }
+
+    function showDashboard() {
+        document.getElementById('displayTotalBudget').textContent = formatMoney(data.totalBudget);
         document.getElementById('setup-section').style.display = 'none';
         document.getElementById('dashboard-section').style.display = 'block';
         updateUI();
     }
 
-    // The Ghost Bar Logic (Context Aware)
     function updateGhost() {
         const inputVal = parseFloat(document.getElementById('newExpenseAmount').value) || 0;
+        const currentSpent = data.expenses.reduce((sum, item) => sum + item.amount, 0);
         const projectedTotal = currentSpent + inputVal;
-        const projectedPct = (projectedTotal / totalBudget) * 100;
+        const projectedPct = (projectedTotal / data.totalBudget) * 100;
 
         const ghostBar = document.getElementById('ghostBar');
-        const mainBar = document.getElementById('mainBar');
         
-        // Calculate daily earnings
-        const dailyRate = annualSalary / WORK_DAYS;
+        // Time Cost
+        const dailyRate = data.salary / WORK_DAYS;
         const daysCost = (inputVal / dailyRate).toFixed(1);
-        
-        // Update Time Cost Text
         const timeDisplay = document.getElementById('timeCostDisplay');
+        
         if (inputVal > 0) {
-            timeDisplay.innerHTML = `⏳ This costs you <strong>${daysCost} days</strong> of work.`;
+            timeDisplay.innerHTML = `⏳ This costs <strong>${daysCost} days</strong> of work.`;
         } else {
             timeDisplay.innerHTML = '';
         }
 
-        // Set Ghost Bar Width (starts where main bar ends)
-        // Note: CSS width is relative to parent, so we simulate the "add on"
-        ghostBar.style.width = Math.min(projectedPct, 100) + "%";
+        // Ghost Bar Visuals
+        const currentPct = (currentSpent / data.totalBudget) * 100;
+        const ghostWidth = projectedPct - currentPct;
+        
+        ghostBar.style.left = Math.min(currentPct, 100) + "%";
+        ghostBar.style.width = Math.max(0, Math.min(ghostWidth, 100 - currentPct)) + "%";
 
-        // Determine Color based on PROJECTED zone
-        let color = 'var(--green)'; // Default < 50%
-        if (projectedPct >= 50 && projectedPct < 80) color = 'var(--orange)';
+        let color = 'var(--green)';
+        if (projectedPct >= 50) color = 'var(--orange)';
         if (projectedPct >= 80) color = 'var(--red)';
         if (projectedPct > 100) color = 'var(--dark-red)';
 
         ghostBar.style.backgroundColor = color;
     }
 
-    // Add Expense
     function addExpense() {
         const amount = parseFloat(document.getElementById('newExpenseAmount').value);
-        const name = document.getElementById('newExpenseName').value || 'Expense';
+        // CHANGED: Get value from Select Dropdown
+        const category = document.getElementById('newExpenseCategory').value;
 
         if (!amount) return;
 
-        expenses.push({ name, amount });
-        currentSpent += amount;
+        const newItem = {
+            id: Date.now(),
+            name: category,
+            amount: amount
+        };
 
-        // Reset Inputs
+        data.expenses.push(newItem);
+        
+        // Clear Amount only (keep category selected for speed, or reset? Let's keep it)
         document.getElementById('newExpenseAmount').value = '';
-        document.getElementById('newExpenseName').value = '';
         document.getElementById('timeCostDisplay').innerHTML = '';
 
+        saveLocal();
         updateUI();
-        updateGhost(); // Reset ghost
+        updateGhost(); 
     }
 
-    // Core UI Update
+    function deleteExpense(id) {
+        if(confirm("Delete this expense?")) {
+            data.expenses = data.expenses.filter(e => e.id !== id);
+            saveLocal();
+            updateUI();
+        }
+    }
+
+    function editExpense(id) {
+        const item = data.expenses.find(e => e.id === id);
+        if (!item) return;
+
+        const newName = prompt("Edit Description:", item.name);
+        if (newName === null) return; 
+        
+        const newAmountStr = prompt("Edit Amount:", item.amount);
+        if (newAmountStr === null) return;
+        
+        const newAmount = parseFloat(newAmountStr);
+        if (isNaN(newAmount)) return alert("Invalid number");
+
+        item.name = newName;
+        item.amount = newAmount;
+        
+        saveLocal();
+        updateUI();
+    }
+
     function updateUI() {
-        const pct = (currentSpent / totalBudget) * 100;
+        const currentSpent = data.expenses.reduce((sum, item) => sum + item.amount, 0);
+        const pct = (currentSpent / data.totalBudget) * 100;
         const mainBar = document.getElementById('mainBar');
         const statusText = document.getElementById('statusText');
 
         mainBar.style.width = Math.min(pct, 100) + "%";
+        
+        // Reset ghost bar
+        document.getElementById('ghostBar').style.width = "0%";
 
-        // Traffic Light Logic
         mainBar.classList.remove('striped');
         if (pct < 50) {
             mainBar.style.backgroundColor = 'var(--green)';
@@ -205,12 +294,65 @@
 
     function renderList() {
         const list = document.getElementById('expenseList');
-        list.innerHTML = expenses.map(e => `
-            <li class="expense-item">
-                <span>${e.name}</span>
-                <span>${formatMoney(e.amount)}</span>
+        const hint = document.getElementById('listHint');
+        
+        if (data.expenses.length > 0) hint.style.display = 'block';
+        else hint.style.display = 'none';
+
+        list.innerHTML = data.expenses.map(e => `
+            <li class="expense-item" onclick="editExpense(${e.id})">
+                <div class="expense-details">
+                    <span style="font-weight:500;">${e.name}</span>
+                </div>
+                <div class="expense-actions">
+                    <span style="font-weight:bold;">${formatMoney(e.amount)}</span>
+                    <button class="delete-btn" onclick="event.stopPropagation(); deleteExpense(${e.id})">&times;</button>
+                </div>
             </li>
         `).join('');
+    }
+
+    function saveLocal() {
+        localStorage.setItem('vacationBudget_v1', JSON.stringify(data));
+    }
+
+    function resetData() {
+        if(confirm("This will wipe all data. Are you sure?")) {
+            localStorage.removeItem('vacationBudget_v1');
+            location.reload();
+        }
+    }
+
+    function exportData() {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data));
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href", dataStr);
+        downloadAnchorNode.setAttribute("download", "budget_" + new Date().toISOString().slice(0,10) + ".json");
+        document.body.appendChild(downloadAnchorNode);
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
+    }
+
+    function importData(input) {
+        const file = input.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const loadedData = JSON.parse(e.target.result);
+                if (loadedData.salary && loadedData.expenses) {
+                    data = loadedData;
+                    saveLocal();
+                    showDashboard();
+                } else {
+                    alert("Invalid file format");
+                }
+            } catch (err) {
+                alert("Error reading file");
+            }
+        };
+        reader.readAsText(file);
     }
 
     function formatMoney(num) {
