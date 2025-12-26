@@ -208,7 +208,6 @@
 
     function addExpense() {
         const amount = parseFloat(document.getElementById('newExpenseAmount').value);
-        // CHANGED: Get value from Select Dropdown
         const category = document.getElementById('newExpenseCategory').value;
 
         if (!amount) return;
@@ -221,7 +220,7 @@
 
         data.expenses.push(newItem);
         
-        // Clear Amount only (keep category selected for speed, or reset? Let's keep it)
+        // Clear Amount
         document.getElementById('newExpenseAmount').value = '';
         document.getElementById('timeCostDisplay').innerHTML = '';
 
@@ -270,22 +269,24 @@
         document.getElementById('ghostBar').style.width = "0%";
 
         mainBar.classList.remove('striped');
+        
+        // UPDATED TEXT FORMATTING HERE:
         if (pct < 50) {
             mainBar.style.backgroundColor = 'var(--green)';
-            statusText.innerText = `All Good (${Math.round(pct)}%)`;
+            statusText.innerText = `All Good (${formatMoney(currentSpent)} - ${Math.round(pct)}%)`;
             statusText.style.color = 'var(--green)';
         } else if (pct < 80) {
             mainBar.style.backgroundColor = 'var(--orange)';
-            statusText.innerText = `Careful (${Math.round(pct)}%)`;
+            statusText.innerText = `Careful (${formatMoney(currentSpent)} - ${Math.round(pct)}%)`;
             statusText.style.color = 'var(--orange)';
         } else if (pct <= 100) {
             mainBar.style.backgroundColor = 'var(--red)';
-            statusText.innerText = `Warning! (${Math.round(pct)}%)`;
+            statusText.innerText = `Warning! (${formatMoney(currentSpent)} - ${Math.round(pct)}%)`;
             statusText.style.color = 'var(--red)';
         } else {
             mainBar.style.backgroundColor = 'var(--dark-red)';
             mainBar.classList.add('striped');
-            statusText.innerText = `OVERBUDGET (${Math.round(pct)}%)`;
+            statusText.innerText = `OVERBUDGET (${formatMoney(currentSpent)} - ${Math.round(pct)}%)`;
             statusText.style.color = 'var(--dark-red)';
         }
 
