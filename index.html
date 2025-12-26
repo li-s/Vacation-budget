@@ -29,14 +29,13 @@
         input, select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 1rem; background: #fff; transition: border 0.2s; }
         input:focus, select:focus { border-color: var(--text-color); outline: none; }
 
-        /* --- NEW: TABS STYLING --- */
+        /* TABS STYLING */
         .tabs-wrapper {
             display: flex;
             gap: 10px;
             overflow-x: auto;
             padding-bottom: 5px;
             margin-bottom: 15px;
-            /* Hide scrollbar but allow scroll */
             scrollbar-width: none; 
             -ms-overflow-style: none;
         }
@@ -63,7 +62,7 @@
             background: none;
             border: 2px dashed #bdc3c7;
             color: #bdc3c7;
-            width: 35px; /* Square-ish */
+            width: 35px;
             padding: 0;
             display: flex; 
             align-items: center; 
@@ -72,7 +71,7 @@
         }
         .tab-add-btn:hover { border-color: var(--green); color: var(--green); }
 
-        /* --- NEW: TRIP HEADER CONTROLS --- */
+        /* TRIP HEADER CONTROLS */
         .trip-controls-header {
             display: flex;
             justify-content: space-between;
@@ -143,8 +142,7 @@
 
     <div id="dashboard-section">
         
-        <div class="tabs-wrapper" id="tabsContainer">
-            </div>
+        <div class="tabs-wrapper" id="tabsContainer"></div>
 
         <div class="trip-controls-header">
             <div class="trip-title-group">
@@ -156,7 +154,7 @@
 
         <div class="trip-stats" onclick="editTripDuration()" title="Click to edit duration">
             <span class="stat-item">📅 <span id="statDays">0</span> Days</span>
-            <span class="stat-item">🔥 <span id="statBurn" class="stat-highlight">$0</span> / day</span>
+            <span class="stat-item">🔥 <span id="statBurn" class="stat-highlight">$0.00</span> / day</span>
             <span class="icon-btn" style="font-size: 0.8rem;">✎</span>
         </div>
 
@@ -168,7 +166,7 @@
             </svg>
             <div class="gauge-text-overlay">
                 <div class="gauge-percent" id="bigPercent">0%</div>
-                <div class="gauge-subtext" id="moneyText">$0 / $0</div>
+                <div class="gauge-subtext" id="moneyText">$0.00 / $0.00</div>
             </div>
         </div>
         <div style="text-align: center; font-size: 0.8rem; color: #888; margin-bottom: 20px;" id="statusMsg">Safe Zone</div>
@@ -259,7 +257,6 @@
     }
 
     function getCurrentTrip() {
-        // Find current trip, fallback to first if deleted
         let trip = data.trips.find(t => t.id == data.currentTripId);
         if (!trip && data.trips.length > 0) {
             trip = data.trips[0];
@@ -302,7 +299,7 @@
     }
 
     function updateUI() {
-        renderTabs(); // Draw tabs
+        renderTabs(); 
         
         const totalSpent = getAllExpensesTotal();
         const pct = (totalSpent / data.totalBudget) * 100;
@@ -335,19 +332,14 @@
         renderList();
     }
 
-    // --- NEW: TAB LOGIC ---
+    // --- TAB LOGIC ---
     function renderTabs() {
         const container = document.getElementById('tabsContainer');
-        
-        // Map trips to buttons
         const html = data.trips.map(t => {
             const isActive = t.id == data.currentTripId;
             return `<button class="tab-btn ${isActive ? 'active' : ''}" onclick="switchTrip(${t.id})">${t.name}</button>`;
         }).join('');
-
-        // Add the "+" button at the end
         const addBtn = `<button class="tab-btn tab-add-btn" onclick="addNewTrip()">+</button>`;
-        
         container.innerHTML = html + addBtn;
     }
 
@@ -371,7 +363,7 @@
         updateUI();
     }
 
-    // --- NEW: TRIP MANAGEMENT ---
+    // --- TRIP MANAGEMENT ---
     
     function addNewTrip() {
         const name = prompt("Name of new trip:");
@@ -407,11 +399,8 @@
         if(data.trips.length <= 1) {
             return alert("You need at least one trip bucket!");
         }
-        
-        const trip = getCurrentTrip();
-        if(confirm(`Are you sure you want to delete "${trip.name}" and all its expenses?`)) {
-            data.trips = data.trips.filter(t => t.id !== trip.id);
-            // Switch to first available
+        if(confirm(`Delete "${getCurrentTrip().name}" and all expenses?`)) {
+            data.trips = data.trips.filter(t => t.id !== data.currentTripId);
             data.currentTripId = data.trips[0].id;
             saveLocal();
             updateUI();
@@ -421,7 +410,6 @@
     function editTripDuration() {
         const trip = getCurrentTrip();
         const newDays = prompt(`Edit days for "${trip.name}":`, trip.days);
-        
         if (newDays !== null) {
             const parsed = parseInt(newDays);
             if (parsed > 0) {
@@ -516,8 +504,15 @@
         };
         reader.readAsText(file);
     }
+    
+    // --- UPDATED CURRENCY FORMATTER ---
     function formatMoney(num) {
-        return '$' + Math.round(num).toLocaleString();
+        return num.toLocaleString('en-US', { 
+            style: 'currency', 
+            currency: 'USD',
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2 
+        });
     }
 </script>
 
